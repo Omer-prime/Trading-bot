@@ -13,6 +13,9 @@ from app.models.account import Account
 from app.models.bot_config import BotConfig
 from app.models.signal import SignalLog
 from app.models.trade import Trade
+from app.models.worker import Worker
+from app.models.trade_event import TradeEvent
+from app.models.audit_log import AuditLog
 
 # Add these later when you create them
 # from app.models.worker import Worker

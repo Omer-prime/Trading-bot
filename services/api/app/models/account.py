@@ -32,3 +32,26 @@ class Account(TimestampMixin, Base):
         back_populates="account",
         uselist=False,
     )
+
+    signals: Mapped[list["SignalLog"]] = relationship(
+        "SignalLog",
+        back_populates="account",
+        cascade="all, delete-orphan",
+    )
+
+    trades: Mapped[list["Trade"]] = relationship(
+        "Trade",
+        back_populates="account",
+        cascade="all, delete-orphan",
+    )
+
+    workers: Mapped[list["Worker"]] = relationship(
+        "Worker",
+        back_populates="account",
+        cascade="all, delete-orphan",
+    )
+
+    audit_logs: Mapped[list["AuditLog"]] = relationship(
+        "AuditLog",
+        back_populates="account",
+    )
