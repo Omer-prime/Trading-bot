@@ -1,6 +1,7 @@
-import type React from 'react';
+import * as React from 'react';
+import type { CSSProperties } from 'react';
 
-const cardStyle: React.CSSProperties = {
+const cardStyle: CSSProperties = {
   background: '#111827',
   border: '1px solid #1f2937',
   borderRadius: 16,
