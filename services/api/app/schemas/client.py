@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 
 class ClientBase(BaseModel):
@@ -13,8 +13,15 @@ class ClientCreate(ClientBase):
     pass
 
 
-class ClientRead(ClientBase):
-    id: int
+class ClientUpdate(BaseModel):
+    name: str | None = None
+    email: EmailStr | None = None
+    phone: str | None = None
+    notes: str | None = None
+    status: str | None = None
 
-    class Config:
-        from_attributes = True
+
+class ClientRead(ClientBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int

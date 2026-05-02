@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     secret_key: str = "change-me"
     jwt_secret: str = "change-me-too"
     worker_shared_secret: str = "worker-secret-change-me"
+    worker_heartbeat_timeout_seconds: int = 90
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

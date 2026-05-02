@@ -30,8 +30,4 @@ class SignalLog(TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(50), default="new")
 
     account: Mapped["Account"] = relationship("Account", back_populates="signals")
-
-    trades: Mapped[list["Trade"]] = relationship(
-        "Trade",
-        back_populates="signal",
-    )
+    trades: Mapped[list["Trade"]] = relationship("Trade", back_populates="signal")
