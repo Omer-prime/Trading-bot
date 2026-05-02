@@ -15,4 +15,4 @@ class Client(TimestampMixin, Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="active")
 
-    accounts = relationship("TradingAccount", back_populates="client")
+    accounts = relationship("Account", back_populates="client")

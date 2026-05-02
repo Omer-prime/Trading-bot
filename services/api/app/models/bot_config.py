@@ -21,4 +21,4 @@ class BotConfig(TimestampMixin, Base):
     london_newyork_only: Mapped[bool] = mapped_column(Boolean, default=True)
     news_filter_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    account = relationship("TradingAccount", back_populates="bot_config")
+    account = relationship("Account", back_populates="bot_config")
