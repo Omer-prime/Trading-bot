@@ -7,6 +7,7 @@ from app.schemas.account import AccountRead
 from app.schemas.bot_config import BotConfigRead
 
 WorkerStatus = Literal["online", "offline", "error", "disabled"]
+HeartbeatStatus = Literal["fresh", "stale", "missing"]
 
 
 class WorkerRegisterRequest(BaseModel):
@@ -44,7 +45,24 @@ class WorkerRead(BaseModel):
     updated_at: datetime
 
 
+class WorkerRuntimeLifecycleFlags(BaseModel):
+    worker_status: WorkerStatus
+    is_active: bool
+    can_fetch_runtime: bool
+    heartbeat_status: HeartbeatStatus
+    heartbeat_stale: bool
+    heartbeat_timeout_seconds: int
+
+
+class WorkerRuntimeEnabledFlags(BaseModel):
+    worker_enabled: bool
+    account_enabled: bool
+    bot_config_present: bool
+
+
 class WorkerRuntimeRead(BaseModel):
     worker: WorkerRead
     account: AccountRead
-    config: BotConfigRead
+    bot_config: BotConfigRead
+    lifecycle_flags: WorkerRuntimeLifecycleFlags
+    enabled_flags: WorkerRuntimeEnabledFlags

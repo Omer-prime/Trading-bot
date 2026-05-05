@@ -14,6 +14,7 @@ from app.services.workers import (
     WORKER_STATUS_DISABLED,
     WORKER_STATUS_OFFLINE,
     WORKER_STATUS_ONLINE,
+    get_worker_runtime_bundle,
     mark_stale_workers_offline,
     retire_duplicate_workers,
     utc_now,
@@ -31,7 +32,12 @@ def register_worker(
     now = utc_now()
     mark_stale_workers_offline(db, now=now)
 
-    account = db.query(Account).filter(Account.id == payload.account_id).first()
+    account = (
+        db.query(Account)
+        .filter(Account.id == payload.account_id)
+        .with_for_update()
+        .first()
+    )
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     if not account.is_enabled:
@@ -55,30 +61,38 @@ def register_worker(
             )
         action = "worker.re_registered"
         worker.version = payload.version
-        worker.status = WORKER_STATUS_ONLINE
-        worker.is_active = True
         worker.heartbeat_at = now
         worker.last_started_at = now
         worker.last_error = None
         worker.last_error_at = None
+        retire_duplicate_workers(
+            db,
+            account_id=payload.account_id,
+            keep_worker_id=worker.id,
+        )
+        worker.status = WORKER_STATUS_ONLINE
+        worker.is_active = True
     else:
         worker = Worker(
             account_id=payload.account_id,
             machine_name=payload.machine_name,
             version=payload.version,
-            status=WORKER_STATUS_ONLINE,
-            is_active=True,
+            status=WORKER_STATUS_OFFLINE,
+            is_active=False,
             heartbeat_at=now,
             last_started_at=now,
         )
         db.add(worker)
+        db.flush()
+        retire_duplicate_workers(
+            db,
+            account_id=payload.account_id,
+            keep_worker_id=worker.id,
+        )
+        worker.status = WORKER_STATUS_ONLINE
+        worker.is_active = True
 
     db.flush()
-    retire_duplicate_workers(
-        db,
-        account_id=payload.account_id,
-        keep_worker_id=worker.id,
-    )
     write_audit_log(
         db,
         actor_type="worker",
@@ -220,54 +234,4 @@ def get_worker_runtime(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    now = utc_now()
-    mark_stale_workers_offline(db, now=now)
-
-    worker = db.query(Worker).filter(Worker.id == worker_id).first()
-    if not worker:
-        raise HTTPException(status_code=404, detail="Worker not found")
-    if not worker.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Worker is inactive; register again",
-        )
-    if worker.status == WORKER_STATUS_DISABLED:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Worker is disabled",
-        )
-    if worker.status == WORKER_STATUS_OFFLINE:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Worker is offline; heartbeat required",
-        )
-    if not worker.account.is_enabled:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Account is disabled",
-        )
-    if not worker.account.bot_config:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Bot config not found for worker account",
-        )
-
-    write_audit_log(
-        db,
-        actor_type="worker",
-        actor_id=worker.id,
-        action="worker.runtime_fetched",
-        entity_type="worker",
-        entity_id=worker.id,
-        account_id=worker.account_id,
-        payload_json={"account_id": worker.account_id},
-        request=request,
-    )
-    db.commit()
-    db.refresh(worker)
-
-    return WorkerRuntimeRead(
-        worker=worker,
-        account=worker.account,
-        config=worker.account.bot_config,
-    )
+    return get_worker_runtime_bundle(db, worker_id=worker_id, request=request)

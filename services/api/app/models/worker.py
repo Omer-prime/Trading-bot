@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import String, ForeignKey, Boolean, DateTime, Text, func
+from sqlalchemy import String, ForeignKey, Boolean, DateTime, Text, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -26,3 +26,13 @@ class Worker(TimestampMixin, Base):
     last_error_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     account: Mapped["Account"] = relationship("Account", back_populates="workers")
+
+    __table_args__ = (
+        Index(
+            "ix_workers_one_active_per_account",
+            "account_id",
+            unique=True,
+            postgresql_where=is_active.is_(True),
+            sqlite_where=is_active.is_(True),
+        ),
+    )
