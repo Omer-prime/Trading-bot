@@ -20,6 +20,7 @@ class WorkerHeartbeatRequest(BaseModel):
     worker_id: int
     status: WorkerStatus = "online"
     last_error: str | None = None
+    dry_run_summary: dict | None = None
 
 
 class WorkerStatusUpdate(BaseModel):
@@ -41,6 +42,7 @@ class WorkerRead(BaseModel):
     last_started_at: datetime | None
     last_error: str | None
     last_error_at: datetime | None
+    dry_run_summary: dict | None
     created_at: datetime
     updated_at: datetime
 

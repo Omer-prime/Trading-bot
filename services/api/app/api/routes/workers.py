@@ -134,6 +134,7 @@ def worker_heartbeat(
 
     worker.status = payload.status
     worker.heartbeat_at = now
+    worker.dry_run_summary = payload.dry_run_summary
 
     if payload.last_error:
         worker.last_error = payload.last_error

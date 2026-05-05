@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import String, ForeignKey, Boolean, DateTime, Text, Index
+from sqlalchemy import String, ForeignKey, Boolean, DateTime, Text, Index, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -24,6 +24,7 @@ class Worker(TimestampMixin, Base):
     last_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_error_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dry_run_summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     account: Mapped["Account"] = relationship("Account", back_populates="workers")
 
