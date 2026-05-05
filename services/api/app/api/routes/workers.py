@@ -31,7 +31,12 @@ def register_worker(
     now = utc_now()
     mark_stale_workers_offline(db, now=now)
 
-    account = db.query(Account).filter(Account.id == payload.account_id).first()
+    account = (
+        db.query(Account)
+        .filter(Account.id == payload.account_id)
+        .with_for_update()
+        .first()
+    )
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     if not account.is_enabled:
@@ -55,30 +60,38 @@ def register_worker(
             )
         action = "worker.re_registered"
         worker.version = payload.version
-        worker.status = WORKER_STATUS_ONLINE
-        worker.is_active = True
         worker.heartbeat_at = now
         worker.last_started_at = now
         worker.last_error = None
         worker.last_error_at = None
+        retire_duplicate_workers(
+            db,
+            account_id=payload.account_id,
+            keep_worker_id=worker.id,
+        )
+        worker.status = WORKER_STATUS_ONLINE
+        worker.is_active = True
     else:
         worker = Worker(
             account_id=payload.account_id,
             machine_name=payload.machine_name,
             version=payload.version,
-            status=WORKER_STATUS_ONLINE,
-            is_active=True,
+            status=WORKER_STATUS_OFFLINE,
+            is_active=False,
             heartbeat_at=now,
             last_started_at=now,
         )
         db.add(worker)
+        db.flush()
+        retire_duplicate_workers(
+            db,
+            account_id=payload.account_id,
+            keep_worker_id=worker.id,
+        )
+        worker.status = WORKER_STATUS_ONLINE
+        worker.is_active = True
 
     db.flush()
-    retire_duplicate_workers(
-        db,
-        account_id=payload.account_id,
-        keep_worker_id=worker.id,
-    )
     write_audit_log(
         db,
         actor_type="worker",

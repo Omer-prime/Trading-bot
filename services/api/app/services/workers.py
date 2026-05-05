@@ -38,6 +38,7 @@ def mark_stale_workers_offline(db: Session, *, now: datetime | None = None) -> l
 
     for worker in stale_workers:
         worker.status = WORKER_STATUS_OFFLINE
+        worker.is_active = False
         write_audit_log(
             db,
             actor_type="system",
