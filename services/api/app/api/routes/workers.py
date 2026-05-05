@@ -14,6 +14,7 @@ from app.services.workers import (
     WORKER_STATUS_DISABLED,
     WORKER_STATUS_OFFLINE,
     WORKER_STATUS_ONLINE,
+    get_worker_runtime_bundle,
     mark_stale_workers_offline,
     retire_duplicate_workers,
     utc_now,
@@ -233,54 +234,4 @@ def get_worker_runtime(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    now = utc_now()
-    mark_stale_workers_offline(db, now=now)
-
-    worker = db.query(Worker).filter(Worker.id == worker_id).first()
-    if not worker:
-        raise HTTPException(status_code=404, detail="Worker not found")
-    if not worker.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Worker is inactive; register again",
-        )
-    if worker.status == WORKER_STATUS_DISABLED:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Worker is disabled",
-        )
-    if worker.status == WORKER_STATUS_OFFLINE:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Worker is offline; heartbeat required",
-        )
-    if not worker.account.is_enabled:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Account is disabled",
-        )
-    if not worker.account.bot_config:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Bot config not found for worker account",
-        )
-
-    write_audit_log(
-        db,
-        actor_type="worker",
-        actor_id=worker.id,
-        action="worker.runtime_fetched",
-        entity_type="worker",
-        entity_id=worker.id,
-        account_id=worker.account_id,
-        payload_json={"account_id": worker.account_id},
-        request=request,
-    )
-    db.commit()
-    db.refresh(worker)
-
-    return WorkerRuntimeRead(
-        worker=worker,
-        account=worker.account,
-        config=worker.account.bot_config,
-    )
+    return get_worker_runtime_bundle(db, worker_id=worker_id, request=request)
