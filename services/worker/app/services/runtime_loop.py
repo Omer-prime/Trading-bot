@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import platform
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -60,6 +61,7 @@ class RuntimeLoop:
                     symbol=symbol,
                     timeframes=[],
                     decision=None,
+                    logged_signal=None,
                     error=connectivity.error,
                 )
                 self.api_client.heartbeat(
@@ -83,7 +85,13 @@ class RuntimeLoop:
                 bias_timeframe=config["bias_timeframe"],
             )
             decision = self.strategy_service.evaluate(runtime=runtime, candles_by_timeframe=candles)
-            self.signal_logger.log_decision(account_id=account["id"], decision=decision)
+            logged_signal = self.signal_logger.log_decision(
+                account_id=account["id"],
+                worker_id=worker_id,
+                timeframes=timeframes,
+                market_snapshot=self._market_snapshot(candles),
+                decision=decision,
+            )
 
             summary = self._summary(
                 runtime_ok=True,
@@ -91,6 +99,7 @@ class RuntimeLoop:
                 symbol=symbol,
                 timeframes=timeframes,
                 decision=decision,
+                logged_signal=logged_signal,
                 error=None,
             )
             self.api_client.heartbeat(
@@ -106,6 +115,7 @@ class RuntimeLoop:
                 symbol=None,
                 timeframes=[],
                 decision=None,
+                logged_signal=None,
                 error=str(exc),
             )
             self.api_client.heartbeat(
@@ -116,6 +126,18 @@ class RuntimeLoop:
             )
             return DryRunLoopResult(False, False, None, summary, str(exc))
 
+    def run_forever(self, *, max_cycles: int | None = None) -> None:
+        completed_cycles = 0
+        while max_cycles is None or completed_cycles < max_cycles:
+            result = self.run_once()
+            completed_cycles += 1
+            sleep_seconds = (
+                settings.dry_run_poll_interval_seconds
+                if result.error is None
+                else settings.dry_run_failure_backoff_seconds
+            )
+            time.sleep(sleep_seconds)
+
     @staticmethod
     def _summary(
         *,
@@ -124,16 +146,38 @@ class RuntimeLoop:
         symbol: str | None,
         timeframes: list[str],
         decision: StrategyDecision | None,
+        logged_signal: dict[str, Any] | None,
         error: str | None,
     ) -> dict[str, Any]:
+        last_result = {
+            "signal_id": logged_signal.get("id") if logged_signal else None,
+            "status": decision.status if decision else None,
+            "reason": decision.reason if decision else error,
+            "direction": decision.direction if decision else None,
+            "trend_bias": decision.trend_bias if decision else None,
+            "rr_estimate": decision.rr_estimate if decision else None,
+            "rejection_reason": None if decision and decision.accepted else (decision.reason if decision else error),
+        }
         return {
             "runtime_ok": runtime_ok,
             "mt5_ok": mt5_ok,
-            "last_signal_status": decision.status if decision else None,
-            "last_signal_reason": decision.reason if decision else error,
+            "last_signal_status": last_result["status"],
+            "last_signal_reason": last_result["reason"],
             "last_symbol_checked": symbol,
             "last_timeframes_checked": timeframes,
+            "last_dry_run_result": last_result,
             "dry_run": True,
+        }
+
+    @staticmethod
+    def _market_snapshot(candles: dict[str, list[dict]]) -> dict[str, dict | None]:
+        return {
+            timeframe: {
+                "first": values[0] if values else None,
+                "last": values[-1] if values else None,
+                "count": len(values),
+            }
+            for timeframe, values in candles.items()
         }
 
 

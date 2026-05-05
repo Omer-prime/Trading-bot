@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from sqlalchemy import String, ForeignKey, Numeric, Boolean, Text, JSON
+from sqlalchemy import String, ForeignKey, Numeric, Boolean, Text, JSON, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -14,9 +14,11 @@ class SignalLog(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     account_id: Mapped[int] = mapped_column(ForeignKey("trading_accounts.id"), index=True)
+    worker_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
     symbol: Mapped[str] = mapped_column(String(50), default="XAUUSD")
     timeframe: Mapped[str] = mapped_column(String(20))
+    timeframes_json: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     direction: Mapped[str] = mapped_column(String(20))
 
     trend_bias: Mapped[str | None] = mapped_column(String(20), nullable=True)
