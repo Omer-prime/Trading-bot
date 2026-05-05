@@ -26,11 +26,20 @@ class StrategyDecision:
     def accepted(self) -> bool:
         return self.status == "accepted"
 
-    def as_signal_payload(self, *, account_id: int) -> dict:
+    def as_signal_payload(
+        self,
+        *,
+        account_id: int,
+        worker_id: int | None = None,
+        timeframes: list[str] | None = None,
+        market_snapshot: dict | None = None,
+    ) -> dict:
         return {
             "account_id": account_id,
+            "worker_id": worker_id,
             "symbol": self.symbol,
             "timeframe": self.timeframe,
+            "timeframes_json": timeframes,
             "direction": self.direction,
             "trend_bias": self.trend_bias,
             "liquidity_sweep_detected": self.liquidity_sweep_detected,
@@ -44,6 +53,7 @@ class StrategyDecision:
             "payload_json": {
                 "dry_run": True,
                 "reason": self.reason,
+                "market_snapshot": market_snapshot,
             },
         }
 

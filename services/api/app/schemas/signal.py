@@ -9,8 +9,10 @@ SignalStatus = Literal["accepted", "rejected"]
 
 class DryRunSignalCreate(BaseModel):
     account_id: int
+    worker_id: int | None = None
     symbol: str
     timeframe: str
+    timeframes_json: list[str] | None = None
     direction: str
     trend_bias: str | None = None
     liquidity_sweep_detected: bool = False
@@ -29,8 +31,10 @@ class SignalLogRead(BaseModel):
 
     id: int
     account_id: int
+    worker_id: int | None
     symbol: str
     timeframe: str
+    timeframes_json: list[str] | None
     direction: str
     trend_bias: str | None
     liquidity_sweep_detected: bool

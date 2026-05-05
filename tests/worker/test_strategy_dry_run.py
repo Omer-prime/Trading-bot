@@ -189,10 +189,37 @@ def test_dry_run_loop_logs_signal_heartbeat_and_never_executes(monkeypatch):
     assert result.decision.accepted is True
     assert fake_mt5.execution_called is False
     assert api_client.logged_signals[0]["status"] == "accepted"
+    assert api_client.logged_signals[0]["worker_id"] == 10
+    assert api_client.logged_signals[0]["timeframes_json"] == ["M5", "H1", "H4"]
+    assert api_client.logged_signals[0]["payload_json"]["market_snapshot"]["M5"]["count"] == 3
     assert api_client.heartbeats[-1]["status"] == "online"
     summary = api_client.heartbeats[-1]["dry_run_summary"]
     assert summary["runtime_ok"] is True
     assert summary["mt5_ok"] is True
     assert summary["last_signal_status"] == "accepted"
+    assert summary["last_dry_run_result"]["signal_id"] == 1
+    assert summary["last_dry_run_result"]["direction"] == "buy"
     assert summary["last_symbol_checked"] == "XAUUSD"
     assert summary["last_timeframes_checked"] == ["M5", "H1", "H4"]
+
+
+def test_dry_run_loop_uses_failure_backoff(monkeypatch):
+    monkeypatch.setattr(settings, "account_id", 1)
+    monkeypatch.setattr(settings, "dry_run_failure_backoff_seconds", 7)
+    sleeps = []
+    monkeypatch.setattr("app.services.runtime_loop.time.sleep", sleeps.append)
+
+    class FailingApiClient(FakeApiClient):
+        def fetch_runtime(self, *, worker_id):
+            raise RuntimeError("runtime unavailable")
+
+    loop = RuntimeLoop(
+        api_client=FailingApiClient(runtime_config()),
+        connectivity_checker=MT5ConnectivityChecker(mt5_module=FakeMT5(candle_map())),
+        strategy_service=StrategyEvaluationService(),
+        signal_logger=SignalLogger(FailingApiClient(runtime_config())),
+    )
+
+    loop.run_forever(max_cycles=1)
+
+    assert sleeps == [7]

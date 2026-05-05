@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     worker_version: str = "0.1.0"
     api_timeout_seconds: int = 10
     mt5_terminal_path: str | None = None
+    dry_run_poll_interval_seconds: int = 30
+    dry_run_failure_backoff_seconds: int = 60
     symbol: str = "XAUUSD"
     entry_timeframe: str = "M5"
     confirmation_timeframe: str = "H1"
